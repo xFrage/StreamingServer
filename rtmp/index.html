@@ -1,41 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live Stream</title>
-  </head>
-  <body>
-    <h2>Live Stream</h2>
-    <video id="video" width="800" controls></video>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <!-- Or if you want a more recent alpha version -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/hls.js@alpha"></script> -->
-    <script>
-      var video = document.getElementById("video");
-      var videoSrc = "http://localhost:8080/hls/silas.m3u8";
-      if (Hls.isSupported()) {
-        var hls = new Hls();
-        hls.loadSource(videoSrc);
-        hls.attachMedia(video);
-      }
-      // hls.js is not supported on platforms that do not have Media Source
-      // Extensions (MSE) enabled.
-      //
-      // When the browser has built-in HLS support (check using `canPlayType`),
-      // we can provide an HLS manifest (i.e. .m3u8 URL) directly to the video
-      // element through the `src` property. This is using the built-in support
-      // of the plain video element, without using hls.js.
-      //
-      // Note: it would be more normal to wait on the 'canplay' event below however
-      // on Safari (where you are most likely to find built-in HLS support) the
-      // video.src URL must be on the user-driven white-list before a 'canplay'
-      // event will be emitted; the last video event that can be reliably
-      // listened-for when the URL is not on the white-list is 'loadedmetadata'.
-      else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = videoSrc;
-      }
-    </script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Stream</title>
+
+  <style>
+    body {
+      background: #0f0f0f;
+      color: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    video {
+      width: 100%;
+      max-width: 960px;
+      background: black;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Live Stream</h2>
+
+  <video
+    id="liveStream"
+    controls
+    autoplay
+    muted
+    playsinline>
+  </video>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <script>
+    const video = document.getElementById("liveStream");
+    const videoSrc = "http://localhost:8080/hls/silas.m3u8";
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        liveSyncDuration: 3,
+        liveMaxLatencyDuration: 10,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 90
+      });
+
+      hls.loadSource(videoSrc);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              break;
+          }
+        }
+      });
+
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = videoSrc;
+    }
+  </script>
+
+</body>
 </html>
